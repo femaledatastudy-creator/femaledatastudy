@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Femtech Inference Platform (prototype)</title>
+<style>
+  :root{--bg:#fff;--ink:#14181f;--muted:#6b7280;--line:#e5e7eb;--panel:#fafafa;--accent:#5b52e0}
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1200px;margin:0 auto;padding:36px 40px 80px}
+  h1{font-family:Georgia,"Times New Roman",serif;font-size:34px;font-weight:600;letter-spacing:-.01em;margin:0 0 8px}
+  .sub{color:var(--muted);font-size:15.5px;line-height:1.55;margin:0 0 28px;max-width:940px}
+  .step-label{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--accent);margin:0 0 14px}
+  .step-num{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:12px}
+  .card{border:1px solid var(--line);border-radius:16px;padding:22px 24px;background:var(--bg)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:12px}
+  .item{border:1px solid var(--line);border-radius:11px;padding:12px 14px;transition:.15s;cursor:pointer}
+  .item:hover{border-color:#cfd4dc}
+  .item.on{border-color:var(--ink);background:var(--panel)}
+  .item .top{display:flex;align-items:center;gap:10px}
+  .tick{width:18px;height:18px;border-radius:5px;border:1.5px solid #cbd0d8;flex:none;display:grid;place-items:center;transition:.15s}
+  .item.on .tick{background:var(--ink);border-color:var(--ink)}
+  .tick svg{width:11px;height:11px;opacity:0;transition:.12s} .item.on .tick svg{opacity:1}
+  .item .name{font-size:14px;font-weight:500}
+  .tl{margin-top:11px;opacity:.35;pointer-events:none;transition:.15s} .item.on .tl{opacity:1;pointer-events:auto}
+  .tl .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+  .tl .lab{font-size:11.5px;color:var(--muted)} .tl .mv{font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:4px;border-radius:99px;background:#e3e6ea}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--ink);cursor:pointer;border:4px solid #fff;box-shadow:0 0 0 1px #cbd0d8}
+  input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--ink);cursor:pointer;border:4px solid #fff}
+  input[type=range]:disabled{opacity:.5}
+  .pre{margin-top:22px;border:1px dashed #cfd2da;border-radius:12px;padding:16px 18px;background:#fbfbfd}
+  .pre .hd{font-size:13px;font-weight:600;color:var(--muted);margin:0 0 12px}
+  .prerow{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+  .agebox{min-width:230px}
+  .agebox .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+  .autochips{display:flex;gap:8px;flex-wrap:wrap}
+  .autochip{font-size:12px;color:#8b93a3;border:1px solid var(--line);background:#f3f4f6;border-radius:99px;padding:6px 11px;display:inline-flex;gap:6px;align-items:center}
+  .autochip::before{content:"auto";font-size:9px;font-weight:700;color:#a6acb8;background:#e7e9ee;border-radius:4px;padding:1px 5px}
+  .btnrow{display:flex;gap:12px;margin:24px 0 6px;flex-wrap:wrap}
+  .btn{border:1.5px solid #cdd2da;background:#fff;color:#4a5160;border-radius:11px;padding:14px 20px;font-size:14.5px;font-weight:600;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:#aab0bb}
+  .btn.on{color:#fff}
+  .btn.safe.on{background:var(--ink);border-color:var(--ink)}
+  .btn.ai.on{background:var(--accent);border-color:var(--accent)}
+  .btn:disabled{opacity:.5;cursor:default}
+  .legend{display:flex;gap:26px;flex-wrap:wrap;margin:16px 0 2px;font-size:12.5px;color:var(--muted)}
+  .legend .grp{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .legend .gt{font-weight:600;color:var(--ink)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:11px;height:11px;border-radius:3px}
+  .stage{position:relative;margin-top:8px;display:grid;place-items:center}
+  svg{width:100%;max-width:1000px;height:auto;display:block}
+  .seg{cursor:pointer} .seg.new{animation:grow .5s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes grow{from{opacity:0}to{opacity:1}}
+  .segtxt{font-size:13px;font-weight:600;pointer-events:none}
+  .conflbl{font-size:14px;font-weight:600}
+  .req{display:inline-block;margin-top:6px;font-size:10.5px;font-weight:600;border-radius:5px;padding:2px 6px;background:#f1f2f5;color:#7b8291}
+  .req.must{background:#fff1e6;color:#b45309}
+  .tl .cnt{font-size:11px;color:var(--muted);margin-top:4px}
+  .pre + .pre{margin-top:12px}
+  .tip{position:fixed;pointer-events:none;z-index:20;background:#14181f;color:#fff;border-radius:9px;padding:9px 11px;font-size:12.5px;max-width:250px;opacity:0;transition:opacity .12s;box-shadow:0 12px 30px rgba(0,0,0,.25)}
+  .tip b{display:block;margin-bottom:3px} .tip .c{font-family:ui-monospace,Menlo,monospace} .tip .w{color:#c3c8d2;margin-top:5px;line-height:1.4}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div style="background:#fff7e6;border:1px solid #f5d79e;color:#7a4d00;border-radius:10px;padding:12px 16px;font-size:13.5px;line-height:1.5;margin:0 0 22px">
+<b>Prototype for ethics review.</b> This page shows the layout and interactions of the platform participants will use within the Qualtrics survey. The results in the first layer follow the platform's rules. The second layer ("Add what only AI can guess") shows fixed example results in this prototype; in the study, these are generated by an AI service from the options selected. No data entered on this page is stored or sent anywhere.
+</div>
+  <h1>What they can know about you</h1>
+  <p class="sub">Choose what you log and how long. The fan opens to the right in three certainty bands: nearest to you, red, is what they are most sure of; then blue; then green, a vague guess. The solid inner half of each band is what anyone can safely work out. Add AI and a lighter half grows just outside it, the extra it reaches for, often from data you never typed in.</p>
+
+  <div class="card">
+    <div class="step-label"><span class="step-num">1</span>Select the data you provide to the technology</div>
+    <div class="grid" id="grid"></div>
+
+    <div class="pre">
+      <p class="hd">Provided when you sign up, required by the app</p>
+      <div class="prerow">
+        <div class="agebox">
+          <div class="row"><span class="lab" style="font-size:11.5px;color:var(--muted)">Age</span><span class="mv" id="ageV">24</span></div>
+          <input type="range" id="age" min="18" max="120" step="1" value="24">
+        </div>      </div>
+    </div>
+
+    <div class="pre">
+      <p class="hd">Collected automatically by your phone, you do not enter these</p>
+      <div class="autochips">
+        <span class="autochip">Phone language</span>
+        <span class="autochip">Approx. location</span><span class="autochip">Log timestamps</span>
+      </div>
+    </div>
+
+    <div class="btnrow">
+      <button class="btn safe" id="btnSafe">See what can be safely assumed</button>
+      <button class="btn ai" id="btnAI">Add what only AI can guess</button>
+    </div>
+
+    <div class="legend">
+      <div class="grp"><span class="gt">Layer</span>
+        <span><i class="dot" style="background:#ef4444"></i>solid, safely assumed</span>
+        <span><i class="dot" style="background:#fca5a5"></i>light, added by AI</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <svg id="viz" viewBox="0 0 1000 820" aria-label="Inference fan"></svg>
+  </div>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+// Inside Claude this works with no key. For a public URL, deploy the Worker and paste its address here.
+const AI_ENDPOINT = "https://api.anthropic.com/v1/messages";
+
+// req: the app function this data type is required for. PLACEHOLDER: replace with the results of the app field research.
+// unit: how often the data type is usually logged, used to show the approximate number of entries.
+const DATA=[
+  {id:'period',lbl:'Period dates',unit:'cycle'},{id:'cycle_len',lbl:'Cycle length',unit:'cycle'},{id:'flow',lbl:'Flow / bleeding',unit:'cycle'},
+  {id:'bbt',lbl:'Body temperature',unit:'day'},{id:'mucus',lbl:'Cervical mucus',unit:'day'},{id:'opk',lbl:'Ovulation tests',unit:'cycle'},
+  {id:'mood',lbl:'Mood',unit:'day'},{id:'libido',lbl:'Libido',unit:'day'},{id:'sex',lbl:'Sexual activity',unit:'month'},
+  {id:'contra',lbl:'Contraception',unit:'month'},{id:'symptoms',lbl:'Physical symptoms',unit:'day'},{id:'sleep',lbl:'Sleep routine',unit:'day'},
+  {id:'weight',lbl:'Weight',unit:'week'},{id:'stress',lbl:'Stress',unit:'day'},{id:'meds',lbl:'Medications',unit:'month'}
+];
+const INF=[
+  {id:'next_period',lbl:'Next period',reqAll:['period'],appear:1,base:.35,rate:.10,cap:.96,why:'Averages your past cycle lengths.'},
+  {id:'cycle_reg',lbl:'Cycle regularity',reqAll:['period'],appear:2,base:.42,rate:.06,cap:.93,why:'How much your cycle length varies.'},
+  {id:'fertile',lbl:'Fertile window',reqAll:['period'],boost:['bbt','mucus','opk'],appear:2,base:.4,rate:.05,cap:.9,why:'Ovulation timing from cycle and tests.'},
+  {id:'ttc',lbl:'Trying to conceive',reqAny:['opk','bbt','mucus'],appear:1,base:.45,rate:.05,cap:.88,why:'Logging fertility signals.'},
+  {id:'pregnancy',lbl:'Possible pregnancy',reqAll:['period','sex'],appear:2,base:.5,rate:.05,cap:.85,why:'A missed period after logged sex.'},
+  {id:'contra_use',lbl:'On contraception',reqAll:['contra'],appear:1,base:.55,rate:.05,cap:.9,why:'Directly logged.'},
+  {id:'sex_level',lbl:'Sexual activity',reqAll:['sex'],appear:1,base:.35,rate:.06,cap:.85,why:'Frequency of logged sex.'},
+  {id:'partner',lbl:'Regular partner',reqAll:['sex'],appear:2,base:.4,rate:.04,cap:.7,why:'A steady recurring pattern.'},
+  {id:'pms',lbl:'PMS / PMDD',reqAll:['mood','period'],appear:3,base:.45,rate:.03,cap:.82,why:'Mood dips before your period.'},
+  {id:'stress_p',lbl:'Stress pattern',reqAll:['mood'],boost:['sleep','stress'],appear:2,base:.32,rate:.03,cap:.7,why:'Sustained low or volatile mood.'},
+  {id:'pcos',lbl:'Possible PCOS',reqAll:['period','symptoms'],appear:6,base:.4,rate:.02,cap:.68,why:'Irregular cycles with symptoms.'},
+  {id:'perimeno',lbl:'Perimenopause',reqAll:['period','symptoms'],appear:18,base:.38,rate:.01,cap:.6,why:'Erratic cycles with symptoms.'}
+];
+const FALLBACK=[
+  {label:'Night owl',confidence:'medium',why:'Entries logged late at night'},
+  {label:'Region of origin',confidence:'low',why:'Phone locale and language'},
+  {label:'Higher education',confidence:'low',why:'Detailed, consistent logging'},
+  {label:'Introvert leaning',confidence:'low',why:'Solo, regular usage'},
+  {label:'City dweller',confidence:'medium',why:'Coarse location from IP'},
+  {label:'Health-anxious',confidence:'medium',why:'Frequent symptom checks'},
+  {label:'Stable routine',confidence:'low',why:'Entries at consistent times'}
+];
+
+const picked=new Set(); const mMonths={}; let age=24;
+function countTxt(d,m){
+  if(d.unit==='cycle')return '≈ '+m+(m===1?' cycle':' cycles')+' logged';
+  if(d.unit==='day')return '≈ '+(m*30)+' days of entries';
+  if(d.unit==='week')return '≈ '+Math.round(m*4.3)+' weekly entries';
+  return '';
+}
+let safeShown=false, aiShown=false, aiItems=null;
+const bucket=c=>c>=.7?'high':c>=.4?'med':'low';
+const cband=s=>s==='high'?'high':s==='low'?'low':'med';
+const monTxt=m=>m===1?'1 month':(m<12?m+' months':(m/12).toFixed(m%12?1:0)+(m<24?' year':' years'));
+const FILL_SAFE={high:'#ef4444',med:'#3b82f6',low:'#10b981'};
+const FILL_AI  ={high:'#fca5a5',med:'#93c5fd',low:'#6ee7b7'};
+const SKEL     ={high:'#fdeaea',med:'#eaf1fe',low:'#e6f8f0'};
+
+const BANDS=[
+  {hue:'high',src:'safe',r0:80,r1:200},{hue:'high',src:'ai',r0:200,r1:320},
+  {hue:'med', src:'safe',r0:335,r1:455},{hue:'med', src:'ai',r0:455,r1:575},
+  {hue:'low', src:'safe',r0:590,r1:710},{hue:'low', src:'ai',r0:710,r1:830}
+];
+const HUEMID={high:200,med:455,low:710};
+
+const grid=document.getElementById('grid');
+DATA.forEach(d=>{
+  const el=document.createElement('div');el.className='item';
+  const reqTag=d.req?`<span class="req must">Required for ${d.req}</span>`:`<span class="req">Optional</span>`;
+  el.innerHTML=`<div class="top"><span class="tick"><svg viewBox="0 0 12 12"><path d="M2 6.2 4.7 9 10 3" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="name">${d.lbl}</span></div>
+  ${reqTag}
+  <div class="tl"><div class="row"><span class="lab" id="lb_${d.id}">Turn on to set duration</span><span class="mv" id="mv_${d.id}"></span></div>
+  <input type="range" min="1" max="36" step="1" value="3" id="rg_${d.id}" disabled>
+  <div class="cnt" id="ct_${d.id}"></div></div>`;
+  const rg=el.querySelector('#rg_'+d.id), tl=el.querySelector('.tl');
+  function setOn(on){
+    if(on){picked.add(d.id);mMonths[d.id]=mMonths[d.id]||3;el.classList.add('on');rg.disabled=false;rg.value=mMonths[d.id];
+      document.getElementById('lb_'+d.id).textContent='Logged regularly for the past';document.getElementById('mv_'+d.id).textContent=monTxt(mMonths[d.id]);
+      document.getElementById('ct_'+d.id).textContent=countTxt(d,mMonths[d.id]);}
+    else{picked.delete(d.id);el.classList.remove('on');rg.disabled=true;
+      document.getElementById('lb_'+d.id).textContent='Turn on to set duration';document.getElementById('mv_'+d.id).textContent='';
+      document.getElementById('ct_'+d.id).textContent='';}
+    dataChanged();
+  }
+  el.onclick=()=>setOn(!picked.has(d.id));
+  tl.addEventListener('click',e=>e.stopPropagation());
+  rg.oninput=()=>{mMonths[d.id]=+rg.value;document.getElementById('mv_'+d.id).textContent=monTxt(+rg.value);
+    document.getElementById('ct_'+d.id).textContent=countTxt(d,+rg.value);dataChanged();};
+  grid.appendChild(el);
+});
+const ageEl=document.getElementById('age');
+ageEl.oninput=()=>{age=+ageEl.value;document.getElementById('ageV').textContent=age;dataChanged();};
+
+// geometry: big fan, opens right, ~61 degrees, pivot lower-left
+const NS='http://www.w3.org/2000/svg', CX=60, CY=760;
+const T0=0.03, T1=1.07;
+const pt=(r,t)=>[CX+r*Math.cos(t), CY-r*Math.sin(t)];
+function sector(r0,r1,t0,t1){
+  const steps=Math.max(2,Math.ceil((t1-t0)/0.04));let d='';
+  for(let i=0;i<=steps;i++){const t=t0+(t1-t0)*i/steps;const[x,y]=pt(r1,t);d+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1)+' ';}
+  for(let i=0;i<=steps;i++){const t=t1-(t1-t0)*i/steps;const[x,y]=pt(r0,t);d+='L'+x.toFixed(1)+' '+y.toFixed(1)+' ';}
+  return d+'Z';
+}
+const mk=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e;};
+const svg=document.getElementById('viz');
+
+const skelG=mk('g',{});svg.appendChild(skelG);
+BANDS.forEach(b=>skelG.appendChild(mk('path',{d:sector(b.r0,b.r1,T0,T1),fill:SKEL[b.hue],stroke:'#eceef1','stroke-width':1})));
+skelG.appendChild(mk('line',{x1:CX,y1:CY,x2:CX+846,y2:CY,stroke:'#d7dbe0','stroke-width':1.5}));
+skelG.appendChild(mk('path',{d:sector(0,70,T0,T1),fill:'#f4f5f7',stroke:'#e0e3e8','stroke-width':1}));
+const you=mk('text',{x:CX+8,y:CY-16,fill:'#14181f','font-size':18,'font-weight':650});you.textContent='YOU';skelG.appendChild(you);
+[['high','high confidence','#ef4444'],['med','medium','#3b82f6'],['low','low','#10b981']].forEach(([h,txt,col])=>{
+  const t=mk('text',{x:(CX+HUEMID[h]).toFixed(1),y:CY+30,'text-anchor':'middle',class:'conflbl',fill:col});t.textContent=txt;skelG.appendChild(t);
+});
+
+const itemsG=mk('g',{});svg.appendChild(itemsG);
+const tip=document.getElementById('tip');
+function place(e){let x=e.clientX+14,y=e.clientY+14;if(x+260>innerWidth)x=e.clientX-260;if(y+120>innerHeight)y=e.clientY-120;tip.style.left=x+'px';tip.style.top=y+'px';}
+function tipHide(){tip.style.opacity=0;}
+
+function effMonths(inf){const allM=(inf.reqAll||[]).map(d=>mMonths[d]);const anyP=(inf.reqAny||[]).filter(d=>picked.has(d)).map(d=>mMonths[d]);
+  let m=Infinity;if(allM.length)m=Math.min(m,...allM);if(inf.reqAny)m=Math.min(m,anyP.length?Math.max(...anyP):0);return m===Infinity?0:m;}
+function ageOK(inf){if(['pregnancy','ttc','fertile'].includes(inf.id))return age<=50;if(inf.id==='perimeno')return age>=38;return true;}
+function conf1(inf){
+  if(!ageOK(inf))return null;
+  const okAll=(inf.reqAll||[]).every(d=>picked.has(d)), okAny=!inf.reqAny||inf.reqAny.some(d=>picked.has(d));
+  if(!(okAll&&okAny))return null;
+  const m=effMonths(inf);if(m<inf.appear)return null;
+  let c=inf.base+inf.rate*(m-inf.appear);(inf.boost||[]).forEach(d=>{if(picked.has(d))c+=.06;});
+  return Math.min(inf.cap,c);
+}
+// Research layer: rule-based inferences.
+function safeList(){
+  const m=new Map();
+  const put=(label,c,why)=>{const o=m.get(label);if(!o||c>o.c)m.set(label,{label,c,why});};
+  INF.forEach(inf=>{const c=conf1(inf);if(c!=null)put(inf.lbl,c,inf.why);});
+  return [...m.values()];
+}
+function bandItems(hue,src){
+  if(src==='safe')return safeList().filter(x=>bucket(x.c)===hue)
+    .map(x=>({label:x.label,why:x.why,conf:Math.round(x.c*100)+'% confident'}));
+  return (aiItems||[]).filter(it=>cband(it.confidence)===hue).map(it=>({label:it.label,why:it.why,conf:(it.confidence||'medium')+' confidence'}));
+}
+function splitLabel(s){const w=String(s).split(' ');if(w.length<3||s.length<=15)return[s];const mid=Math.ceil(w.length/2);return[w.slice(0,mid).join(' '),w.slice(mid).join(' ')];}
+
+function render(isNew){
+  itemsG.innerHTML='';
+  BANDS.forEach(b=>{
+    const show=(b.src==='safe'&&safeShown)||(b.src==='ai'&&aiShown);if(!show)return;
+    const items=bandItems(b.hue,b.src);const n=items.length;if(!n)return;
+    const fill=(b.src==='safe'?FILL_SAFE:FILL_AI)[b.hue], txtcol=b.src==='safe'?'#fff':'#14181f';
+    const span=(T1-T0)/n, gap=Math.min(0.018, span*0.08);
+    items.forEach((it,i)=>{
+      const a0=T0+i*span+gap/2, a1=T0+(i+1)*span-gap/2, mid=(a0+a1)/2;
+      const seg=mk('path',{class:'seg'+(isNew?' new':''),d:sector(b.r0+1.5,b.r1-1.5,a0,a1),fill,opacity:.95,style:`animation-delay:${i*40}ms`});
+      seg.addEventListener('mousemove',e=>{tip.innerHTML=`<b>${esc(it.label)}</b><span class="c">${it.conf}</span><div class="w">${esc(it.why||'')}</div>`;tip.style.opacity=1;place(e);});
+      seg.addEventListener('mouseleave',tipHide);
+      itemsG.appendChild(seg);
+      const[mx,my]=pt((b.r0+b.r1)/2,mid);const lines=splitLabel(it.label);
+      const rot=-(mid*180/Math.PI);
+      const g=mk('g',{transform:`rotate(${rot.toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)})`,class:isNew?'new':''});
+      lines.forEach((ln,j)=>{const t=mk('text',{x:mx.toFixed(1),y:(my+j*14-(lines.length-1)*7).toFixed(1),'text-anchor':'middle','dominant-baseline':'middle',class:'segtxt',fill:txtcol});t.textContent=ln;g.appendChild(t);});
+      itemsG.appendChild(g);
+    });
+  });
+}
+function dataChanged(){
+  if(aiShown){aiShown=false;aiItems=null;btnAI.textContent='Add what only AI can guess';btnAI.classList.remove('on');}
+  render(false);
+}
+
+const btnSafe=document.getElementById('btnSafe'), btnAI=document.getElementById('btnAI');
+btnSafe.onclick=()=>{
+  if(!safeShown && picked.size===0){return;}
+  safeShown=!safeShown;
+  btnSafe.classList.toggle('on',safeShown);
+  btnSafe.textContent=safeShown?'Hide safe layer':'See what can be safely assumed';
+  render(true);
+};
+btnAI.onclick=async()=>{
+  if(aiShown){ // toggle off
+    aiShown=false;aiItems=null;btnAI.classList.remove('on');btnAI.textContent='Add what only AI can guess';render(false);return;
+  }
+  if(picked.size===0){return;}
+  btnAI.disabled=true;btnAI.textContent='AI is reading your data…';
+  const sel=[...picked].map(id=>`${DATA.find(d=>d.id===id).lbl} (logged regularly for ${monTxt(mMonths[id])})`).join(', ');
+  const prompt=`An AI is profiling a female health app user. KNOWN facts already on file (do NOT output these as guesses, use them as context): age ${age}, plus phone language and locale, coarse location from IP, and the time of day each entry is made. The user has logged: ${sel}. A doctor reading only the medical logs could NOT determine the things you output. Show what is unique to AI: broader profile dimensions from patterns, timing, metadata and cross-population modelling, for example likely ethnicity or region of origin, income or education level, chronotype such as night owl from late-night logging, personality traits, relationship or living situation, cultural or religious hints, and the likely SOURCE of stress appropriate to age ${age} (for a teen school, for a twenties adult work, and so on). Return ONLY valid JSON, no markdown, exactly:
+{"items":[{"label":"short inference","confidence":"low|medium|high","why":"what signal it is read from"}]}
+Give 6 to 8 items, each a DIFFERENT kind. Never output age itself or a life-stage label that just restates the age. Do not repeat medical predictions like period, pregnancy, fertility or PCOS. Labels under 4 words. In each "why" name the signal. Mostly low or medium confidence. No product or advertising. Privacy-awareness demo.`;
+  let items=null;
+  try{
+    const res=await fetch(AI_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})});
+    const data=await res.json();
+    let txt=data.content.filter(b=>b.type==="text").map(b=>b.text).join("\n").replace(/```json|```/g,"").trim();
+    items=(JSON.parse(txt).items)||null;
+  }catch(err){console.error(err);}
+  if(!items||!items.length)items=FALLBACK;
+  aiItems=items;aiShown=true;render(true);
+  btnAI.textContent='Hide AI layer';btnAI.classList.add('on');btnAI.disabled=false;
+};
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+</script>
+</body>
+</html>
